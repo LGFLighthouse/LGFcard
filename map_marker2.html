@@ -20,6 +20,12 @@
       font-size: 13px;
       padding: 4px 8px;
     }
+    @media print {
+  .mapboxgl-control-container,
+  .print-hide {
+    display: none !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -73,6 +79,7 @@
           map.setStyle(nextStyle);
         };
         const container = document.createElement('div');
+        container.className = 'print-hide';
         container.appendChild(btn);
         return container;
       },
