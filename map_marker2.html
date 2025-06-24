@@ -47,7 +47,7 @@
       container: 'map',
       style: 'mapbox://styles/vxlgfc/cmcaly08900o401sh6xr5abc8',
       center: defaultCenter,
-      zoom: 17.83,
+      zoom: 16.83,
       pitch: 32.50,     // tilt for 3D perspective
       bearing: -46.40,  // slight rotation for aesthetic angle
       antialias: true  // improves 3D rendering quality (optional but recommended)
@@ -120,7 +120,7 @@
   // Reapply pitch and bearing after bounds fit (wait for it to complete)
   map.once('moveend', () => {
     map.easeTo({
-      zoom: 17.83,
+      zoom: 16.83,
       pitch: 32.50,
       bearing: -46.40,
       duration: 1000  // optional animation
