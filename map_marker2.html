@@ -62,29 +62,30 @@
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
     // Add satellite/street toggle
-    const toggleControl = {
-      onAdd: function(map) {
-        const btn = document.createElement('button');
-        btn.textContent = '🗺 Toggle Style';
-        btn.style.padding = '6px';
-        btn.style.margin = '10px';
-        btn.style.background = '#fff';
-        btn.style.border = '1px solid #ccc';
-        btn.style.cursor = 'pointer';
-        btn.onclick = () => {
-          const current = map.getStyle().name || '';
-          const nextStyle = map.getStyle().sprite.includes('clwyo9kv') ?
-            'mapbox://styles/mapbox/satellite-streets-v12' :
-            'mapbox://styles/vxlgfc/clwyo9kv301hz01r0dyn45uz0';
-          map.setStyle(nextStyle);
-        };
-        const container = document.createElement('div');
-        container.className = 'print-hide';
-        container.appendChild(btn);
-        return container;
-      },
-      onRemove: function() {}
+const toggleControl = {
+  onAdd: function (map) {
+    const container = document.createElement('div');
+    container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group print-hide';
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.innerHTML = '🗺';
+    button.title = 'Toggle Style';
+    button.style.fontSize = '16px';
+    button.onclick = () => {
+      const currentStyle = map.getStyle().sprite || '';
+      const isCustom = currentStyle.includes('clwyo9kv');
+      const nextStyle = isCustom
+        ? 'mapbox://styles/mapbox/satellite-streets-v12'
+        : 'mapbox://styles/vxlgfc/clwyo9kv301hz01r0dyn45uz0';
+      map.setStyle(nextStyle);
     };
+
+    container.appendChild(button);
+    return container;
+  },
+  onRemove: function () {}
+};
     map.addControl(toggleControl, 'top-left');
 
     const bounds = new mapboxgl.LngLatBounds();
