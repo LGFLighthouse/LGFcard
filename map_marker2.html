@@ -73,13 +73,15 @@ const toggleControl = {
     button.title = 'Toggle Style';
     button.style.fontSize = '16px';
     button.onclick = () => {
-      const currentStyle = map.getStyle().sprite || '';
-      const isCustom = currentStyle.includes('clwyo9kv');
-      const nextStyle = isCustom
-        ? 'mapbox://styles/mapbox/satellite-streets-v12'
-        : 'mapbox://styles/vxlgfc/cmcaly08900o401sh6xr5abc8';
-      map.setStyle(nextStyle);
-    };
+      const spriteURL = map.getStyle().sprite || '';
+      const usingStyleA = spriteURL.includes('cmcaly08900o401sh6xr5abc8');
+
+      const nextStyle = usingStyleA
+        ? 'mapbox://styles/vxlgfc/cmcb14up800vd01sh9nasfukj'  // switch to alternate
+        : 'mapbox://styles/vxlgfc/cmcaly08900o401sh6xr5abc8'; // switch back
+
+    map.setStyle(nextStyle);
+  };
 
     container.appendChild(button);
     return container;
