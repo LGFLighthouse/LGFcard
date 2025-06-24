@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Leaflet Map with Custom Markers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS/JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { width: 100%; height: 100vh; }
+    .leaflet-tooltip-custom {
+      background-color: white;
+      border: 1px solid #333;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <script>
+    function getMarkersFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get('markers');
+      if (!raw) return [];
+      try {
+        return JSON.parse(decodeURIComponent(raw));
+      } catch (e) {
+        console.error("Invalid markers JSON:", e);
+        return [];
+      }
+    }
+
+    const markers = getMarkersFromURL();
+    const defaultCenter = [46.943856, 7.438909];
+    const map = L.map('map').setView(defaultCenter, 14);
+
+    // ✅ Your custom raster-style tile layer
+    L.tileLayer('https://api.mapbox.com/styles/v1/vxlgfc/cmcacpfpz00en01s6982ffe8f/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoidnhsZ2ZjIiwiYSI6ImNsd3lueXhidzFld2IybnF6Y2J3b3ptbzgifQ.eGHB2Tuu-dJPHF93HzLMdA', {
+      tileSize: 256,
+      zoomOffset: 0,
+      attribution: '© Mapbox © OpenStreetMap'
+    }).addTo(map);
+
+    const bounds = [];
+
+    markers.forEach(m => {
+      if (!m.lat || !m.lon) return;
+
+      const width = m.iconWidth || 32;
+      const height = m.iconHeight || 32;
+      const label = (m.label || `(${m.lat.toFixed(4)}, ${m.lon.toFixed(4)})`).replace(/\\n/g, "\n");
+
+      let markerOptions = {};
+      if (m.icon) {
+        markerOptions.icon = L.icon({
+          iconUrl: m.icon,
+          iconSize: [width, height],
+          iconAnchor: [width / 2, height],
+          popupAnchor: [0, -height]
+        });
+      }
+
+      const marker = L.marker([m.lat, m.lon], markerOptions).addTo(map);
+      marker.bindTooltip(label, {
+        permanent: true,
+        direction: 'top',
+        offset: [0, -height * 0.75],
+        className: 'leaflet-tooltip-custom'
+      });
+
+      bounds.push([m.lat, m.lon]);
+    });
+
+    if (bounds.length > 1) {
+      map.fitBounds(bounds, { padding: [20, 20], maxZoom: 19 });
+    } else if (bounds.length === 1) {
+      map.setView(bounds[0], 20);
+    }
+  </script>
+</body>
+</html>
