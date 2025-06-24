@@ -112,11 +112,20 @@
 
     // Fit to markers
     if (markers.length > 1) {
-      map.fitBounds(bounds, { padding: 40, maxZoom: 18 });
-    } else if (markers.length === 1) {
-      map.setCenter([markers[0].lon, markers[0].lat]);
-      map.setZoom(18);
-    }
+  map.fitBounds(bounds, {
+    padding: 40,
+    maxZoom: 18
+  });
+
+  // Reapply pitch and bearing after bounds fit (wait for it to complete)
+  map.once('moveend', () => {
+    map.easeTo({
+      pitch: 46.08,
+      bearing: -69.49,
+      duration: 1000  // optional animation
+    });
+  });
+}
   </script>
 </body>
 </html>
