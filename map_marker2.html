@@ -5,12 +5,13 @@
   <title>Mapbox GL – Marker Manager</title>
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
 
-  <!-- Mapbox GL JS -->
-  <script src="https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.js"></script>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.css" rel="stylesheet" />
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.css" rel="stylesheet" />
 
-  <!-- Popup Manager (Global UMD Export) -->
-  <script src="https://cdn.jsdelivr.net/npm/mapbox-gl-popup-manager@1.2.0/dist/mapbox-gl-popup-manager.global.min.js"></script>
+<!-- PopupManager must come after Mapbox GL JS -->
+<script src="https://cdn.jsdelivr.net/npm/mapbox-gl-popup-manager@1.2.0/dist/mapbox-gl-popup-manager.global.min.js"></script>
+
+
 
   <style>
     body { margin: 0; padding: 0; }
