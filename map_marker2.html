@@ -20,10 +20,11 @@
       font-size: 13px;
       padding: 4px 8px;
     }
+
     @media print {
-  .mapboxgl-control-container,
-  .print-hide {
-    display: none !important;
+      .mapboxgl-control-container,
+      .print-hide {
+        display: none !important;
       }
     }
   </style>
@@ -31,7 +32,7 @@
 <body>
   <div id="map"></div>
 
-  <!-- ✅ Toast container (outside script!) -->
+  <!-- ✅ Toast container -->
   <div id="toast" style="
     position: absolute;
     bottom: 20px;
@@ -44,13 +45,8 @@
     font-size: 14px;
     display: none;
     z-index: 9999;
-  ">
-    Copied to clipboard
-  </div>
+  ">Copied to clipboard</div>
 
-
-  <!-- ✅ JS STARTS HERE -->
-  
   <script>
     mapboxgl.accessToken = 'pk.eyJ1IjoidnhsZ2ZjIiwiYSI6ImNsd3lueXhidzFld2IybnF6Y2J3b3ptbzgifQ.eGHB2Tuu-dJPHF93HzLMdA';
 
@@ -66,6 +62,18 @@
       }
     }
 
+    window.copyToClipboard = function (text) {
+      navigator.clipboard.writeText(text).then(() => {
+        const toast = document.getElementById('toast');
+        toast.style.display = 'block';
+        setTimeout(() => {
+          toast.style.display = 'none';
+        }, 1500);
+      }).catch(() => {
+        console.warn('Clipboard copy failed');
+      });
+    };
+
     const markers = getMarkersFromURL();
     const defaultCenter = [7.438909, 46.943856];
 
@@ -74,56 +82,39 @@
       style: 'mapbox://styles/vxlgfc/cmcaly08900o401sh6xr5abc8',
       center: defaultCenter,
       zoom: 16.82,
-      pitch: 32.50,     // tilt for 3D perspective
-      bearing: -46.40,  // slight rotation for aesthetic angle
-      antialias: true  // improves 3D rendering quality (optional but recommended)
+      pitch: 32.50,
+      bearing: -46.40,
+      antialias: true
     });
 
-<script>
-  window.copyToClipboard = function (text) {
-  navigator.clipboard.writeText(text).then(() => {
-    const toast = document.getElementById('toast');
-    toast.style.display = 'block';
-    setTimeout(() => {
-      toast.style.display = 'none';
-    }, 1500);
-  }).catch(() => {
-    console.warn('Clipboard copy failed');
-  });
-};
-</script>
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-    // Add satellite/street toggle
-const toggleControl = {
-  onAdd: function (map) {
-    const container = document.createElement('div');
-    container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group print-hide';
+    const toggleControl = {
+      onAdd: function (map) {
+        const container = document.createElement('div');
+        container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group print-hide';
 
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.innerHTML = '🗺';
-    button.title = 'Toggle Style';
-    button.style.fontSize = '16px';
-    button.onclick = () => {
-      const spriteURL = map.getStyle().sprite || '';
-      const usingStyleA = spriteURL.includes('cmcaly08900o401sh6xr5abc8');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.innerHTML = '🗺';
+        button.title = 'Toggle Style';
+        button.style.fontSize = '16px';
+        button.onclick = () => {
+          const spriteURL = map.getStyle().sprite || '';
+          const usingStyleA = spriteURL.includes('cmcaly08900o401sh6xr5abc8');
 
-      const nextStyle = usingStyleA
-        ? 'mapbox://styles/vxlgfc/cmcb14up800vd01sh9nasfukj'  // switch to alternate
-        : 'mapbox://styles/vxlgfc/cmcaly08900o401sh6xr5abc8'; // switch back
+          const nextStyle = usingStyleA
+            ? 'mapbox://styles/vxlgfc/cmcb14up800vd01sh9nasfukj'
+            : 'mapbox://styles/vxlgfc/cmcaly08900o401sh6xr5abc8';
 
-      map.setStyle(nextStyle);
+          map.setStyle(nextStyle);
+        };
+
+        container.appendChild(button);
+        return container;
+      },
+      onRemove: function () {}
     };
-
-    container.appendChild(button);
-    return container;
-  },
-
-  onRemove: function () {
-    // Optional cleanup logic if needed
-  }
-};
     map.addControl(toggleControl, 'top-left');
 
     const bounds = new mapboxgl.LngLatBounds();
@@ -131,75 +122,71 @@ const toggleControl = {
     markers.forEach(marker => {
       if (!marker.lat || !marker.lon) return;
 
-      const iconURL = marker.icon || 'https://cdn-icons-png.flaticon.com/512/149/149060.png';
       const width = marker.iconWidth || 32;
       const height = marker.iconHeight || 32;
       const label = marker.label || `(${marker.lat.toFixed(4)}, ${marker.lon.toFixed(4)})`;
 
-let m;
+      let m;
 
-if (marker.icon) {
-  const el = document.createElement('img');
-  el.src = marker.icon;
-  el.width = marker.iconWidth || 32;
-  el.height = marker.iconHeight || 32;
-  el.className = 'custom-marker';
-  el.style.borderRadius = '50%';
-  el.style.objectFit = 'cover';
+      if (marker.icon) {
+        const el = document.createElement('img');
+        el.src = marker.icon;
+        el.width = width;
+        el.height = height;
+        el.className = 'custom-marker';
+        el.style.borderRadius = '50%';
+        el.style.objectFit = 'cover';
+        m = new mapboxgl.Marker(el);
+      } else {
+        m = new mapboxgl.Marker(); // Default blue pin
+      }
 
-  m = new mapboxgl.Marker(el);
-} else {
-  m = new mapboxgl.Marker(); // default blue pin
-}
+      m.setLngLat([marker.lon, marker.lat]).addTo(map);
 
-m.setLngLat([marker.lon, marker.lat]).addTo(map);
+      const popup = new mapboxgl.Popup({
+        offset: [0, -height * 0.6],
+        closeButton: false,
+        closeOnClick: false
+      }).setText(label);
 
-const popup = new mapboxgl.Popup({
-  offset: [0, -(marker.iconHeight || 32) * 0.6],
-  closeButton: false,
-  closeOnClick: false
-}).setText(marker.label || `(${marker.lat.toFixed(4)}, ${marker.lon.toFixed(4)})`);
-
-m.setPopup(popup);
-popup.addTo(map);
+      m.setPopup(popup);
+      popup.addTo(map);
 
       bounds.extend([marker.lon, marker.lat]);
     });
 
-    // Fit to markers
     if (markers.length > 1) {
-  map.fitBounds(bounds, {
-    padding: 40,
-    maxZoom: 18
-  });
+      map.fitBounds(bounds, {
+        padding: 40,
+        maxZoom: 18
+      });
 
-  // Reapply pitch and bearing after bounds fit (wait for it to complete)
-  map.once('moveend', () => {
-    map.easeTo({
-      zoom: 16.83,
-      pitch: 32.50,
-      bearing: -46.40,
-      duration: 1000  // optional animation
-    });
-  });
-}
+      map.once('moveend', () => {
+        map.easeTo({
+          zoom: 16.83,
+          pitch: 32.50,
+          bearing: -46.40,
+          duration: 1000
+        });
+      });
+    }
+
     map.on('contextmenu', (e) => {
-  const lat = e.lngLat.lat.toFixed(6);
-  const lon = e.lngLat.lng.toFixed(6);
-  const coordText = `${lat}, ${lon}`;
+      const lat = e.lngLat.lat.toFixed(6);
+      const lon = e.lngLat.lng.toFixed(6);
+      const coordText = `${lat}, ${lon}`;
 
-  const popup = new mapboxgl.Popup({
-    closeOnClick: true,
-    offset: 10
-  })
-    .setLngLat(e.lngLat)
-.setHTML(`
-  <strong>Coordinates:</strong><br>
-  <code style="cursor: pointer; user-select: all;" onclick="copyToClipboard('${coordText}')">${coordText}</code>
-`)
-    .addTo(map);
-});
-     
+      const popup = new mapboxgl.Popup({
+        closeOnClick: true,
+        offset: 10
+      })
+        .setLngLat(e.lngLat)
+        .setHTML(`
+          <strong>Coordinates:</strong><br>
+          <code style="cursor: pointer; user-select: all;" onclick="copyToClipboard('${coordText}')">${coordText}</code>
+        `)
+        .addTo(map);
+    });
   </script>
 </body>
 </html>
