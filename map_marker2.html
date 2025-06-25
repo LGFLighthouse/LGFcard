@@ -212,7 +212,9 @@
     }
   }
 
-  map.on('render', adjustPopups);
+ map.on('render', () => {
+  setTimeout(adjustPopups, 50); // wait ~1 frame
+});
 </script>
 
 </body>
