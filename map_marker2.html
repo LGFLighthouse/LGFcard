@@ -141,6 +141,28 @@ popup.addTo(map);
     });
   });
 }
+    map.on('contextmenu', (e) => {
+  const lat = e.lngLat.lat.toFixed(6);
+  const lon = e.lngLat.lng.toFixed(6);
+  const coordText = `${lat}, ${lon}`;
+
+  const popup = new mapboxgl.Popup({
+    closeOnClick: true,
+    offset: 10
+  })
+    .setLngLat(e.lngLat)
+    .setHTML(`
+      <strong>Coordinates:</strong><br>
+      <code>${coordText}</code><br>
+      <button onclick="copyCoords('${coordText}')">Copy</button>
+    `)
+    .addTo(map);
+});
+      function copyCoords(text) {
+    navigator.clipboard.writeText(text)
+      .then(() => alert('Coordinates copied: ' + text))
+      .catch(() => alert('Copy failed'));
+  }
   </script>
 </body>
 </html>
