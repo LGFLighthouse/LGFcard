@@ -103,17 +103,23 @@ const toggleControl = {
       const height = marker.iconHeight || 32;
       const label = marker.label || `(${marker.lat.toFixed(4)}, ${marker.lon.toFixed(4)})`;
 
-const el = document.createElement('img');
-el.src = iconURL;
-el.width = marker.iconWidth || 32;
-el.height = marker.iconHeight || 32;
-el.className = 'custom-marker';
-el.style.borderRadius = '50%';
-el.style.objectFit = 'cover';
+let m;
 
-const m = new mapboxgl.Marker(el)
-  .setLngLat([marker.lon, marker.lat])
-  .addTo(map);
+if (marker.icon) {
+  const el = document.createElement('img');
+  el.src = marker.icon;
+  el.width = marker.iconWidth || 32;
+  el.height = marker.iconHeight || 32;
+  el.className = 'custom-marker';
+  el.style.borderRadius = '50%';
+  el.style.objectFit = 'cover';
+
+  m = new mapboxgl.Marker(el);
+} else {
+  m = new mapboxgl.Marker(); // default blue pin
+}
+
+m.setLngLat([marker.lon, marker.lat]).addTo(map);
 
 const popup = new mapboxgl.Popup({
   offset: [0, -(marker.iconHeight || 32) * 0.6],
