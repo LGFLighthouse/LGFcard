@@ -5,6 +5,7 @@
   <title>Mapbox GL – Enhanced Multi-Marker Map</title>
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
   <script src='https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.js'></script>
+  <script src="https://cdn.jsdelivr.net/npm/mapbox-gl-popup-manager@1.2.0/dist/index.umd.min.js"></script>
   <link href='https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.css' rel='stylesheet' />
   <style>
     body { margin: 0; padding: 0; }
@@ -32,7 +33,6 @@
 <body>
   <div id="map"></div>
 
-  <!-- ✅ Toast container -->
   <div id="toast" style="
     position: absolute;
     bottom: 20px;
@@ -87,6 +87,8 @@
       antialias: true
     });
 
+    const popupManager = new window.MapboxGLPopupManager(map);
+
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
     const toggleControl = {
@@ -138,19 +140,20 @@
         el.style.objectFit = 'cover';
         m = new mapboxgl.Marker(el);
       } else {
-        m = new mapboxgl.Marker(); // Default blue pin
+        m = new mapboxgl.Marker();
       }
 
       m.setLngLat([marker.lon, marker.lat]).addTo(map);
 
       const popup = new mapboxgl.Popup({
-        offset: [0, -height * 0.6],
+        offset: 25,
         closeButton: false,
-        closeOnClick: false
+        closeOnClick: false,
+        anchor: 'auto'
       }).setText(label);
 
       m.setPopup(popup);
-      popup.addTo(map);
+      popupManager.addPopup(popup);
 
       bounds.extend([marker.lon, marker.lat]);
     });
@@ -178,14 +181,16 @@
 
       const popup = new mapboxgl.Popup({
         closeOnClick: true,
-        offset: 10
+        offset: 10,
+        anchor: 'auto'
       })
         .setLngLat(e.lngLat)
         .setHTML(`
           <strong>Coordinates:</strong><br>
           <code style="cursor: pointer; user-select: all;" onclick="copyToClipboard('${coordText}')">${coordText}</code>
-        `)
-        .addTo(map);
+        `);
+
+      popupManager.addPopup(popup);
     });
   </script>
 </body>
