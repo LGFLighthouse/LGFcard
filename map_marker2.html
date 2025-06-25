@@ -194,22 +194,23 @@ function adjustPopups() {
   const popups = Array.from(document.querySelectorAll('.mapboxgl-popup'));
   const offsetStep = 25;
 
-  // Reset any previous shifts
-  popups.forEach(p => {
-    const content = p.querySelector('.mapboxgl-popup-content');
-    if (content) content.style.marginTop = '0px';
-  });
+  // Clear previous offsets
+  popups.forEach(p => p.style.transform = '');
 
   for (let i = 0; i < popups.length; i++) {
     const rect1 = popups[i].getBoundingClientRect();
+    let overlapCount = 0;
+
     for (let j = i + 1; j < popups.length; j++) {
       const rect2 = popups[j].getBoundingClientRect();
-      if (!(rect1.right < rect2.left || rect1.left > rect2.right ||
-            rect1.bottom < rect2.top || rect1.top > rect2.bottom)) {
-        const content = popups[j].querySelector('.mapboxgl-popup-content');
-        if (content) {
-          content.style.marginTop = `${(j - i + 1) * offsetStep}px`;
-        }
+      const overlap =
+        !(rect1.right < rect2.left || rect1.left > rect2.right ||
+          rect1.bottom < rect2.top || rect1.top > rect2.bottom);
+
+      if (overlap) {
+        overlapCount++;
+        const offset = overlapCount * offsetStep;
+        popups[j].style.transform = `translateY(${offset}px)`;
       }
     }
   }
