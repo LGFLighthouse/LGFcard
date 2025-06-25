@@ -205,7 +205,7 @@
         if (!(rect1.right < rect2.left || rect1.left > rect2.right ||
               rect1.bottom < rect2.top || rect1.top > rect2.bottom)) {
           // Apply progressive offset based on number of overlaps
-          popups[j].style.transform = `translateY(${offsetCount * offsetStep}px)`;
+          popups[j].style.transform = `translateY(${(j - i + 1) * offsetStep}px)`;
           offsetCount++;
         }
       }
