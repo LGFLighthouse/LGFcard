@@ -70,6 +70,50 @@
     };
 
     map.on('load', () => {
+
+      // Style toggle control
+      const toggleControl = {
+        onAdd: function (map) {
+          const container = document.createElement('div');
+          container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group print-hide';
+          const button = document.createElement('button');
+          button.innerHTML = '🗺';
+          button.title = 'Toggle Style';
+          button.onclick = () => {
+            const style = map.getStyle().sprite || '';
+            const usingStyleA = style.includes('cmcaly08900o401sh6xr5abc8');
+            map.setStyle(usingStyleA
+              ? 'mapbox://styles/vxlgfc/cmcb14up800vd01sh9nasfukj'
+              : 'mapbox://styles/vxlgfc/cmcaly08900o401sh6xr5abc8');
+          };
+          container.appendChild(button);
+          return container;
+        },
+        onRemove: function () {}
+      };
+      map.addControl(toggleControl, 'top-left');
+
+
+      // Right-click to copy coordinates
+      map.on('contextmenu', (e) => {
+        const lat = e.lngLat.lat.toFixed(6);
+        const lon = e.lngLat.lng.toFixed(6);
+        const coordText = `${lat}, ${lon}`;
+        new mapboxgl.Popup({ closeOnClick: true, offset: 10 })
+          .setLngLat(e.lngLat)
+          .setHTML(`<strong>Coordinates:</strong><br><code style='cursor:pointer' onclick='copyToClipboard("${coordText}")'>${coordText}</code>`)
+          .addTo(map);
+      });
+
+      window.copyToClipboard = function (text) {
+        navigator.clipboard.writeText(text).then(() => {
+          const toast = document.getElementById('toast');
+          toast.style.display = 'block';
+          setTimeout(() => toast.style.display = 'none', 1500);
+        });
+      };
+
+
       map.addSource('markers', {
         type: 'geojson',
         data: geojson,
