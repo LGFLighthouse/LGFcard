@@ -190,27 +190,30 @@
   </script>
 
 <script>
-  function adjustPopups() {
-    const popups = Array.from(document.querySelectorAll('.mapboxgl-popup'));
-    const offsetStep = 25;
+function adjustPopups() {
+  const popups = Array.from(document.querySelectorAll('.mapboxgl-popup'));
+  const offsetStep = 25;
 
-    // Reset any previous transform
-    popups.forEach(p => p.style.transform = 'translateY(0)');
+  // Reset any previous shifts
+  popups.forEach(p => {
+    const content = p.querySelector('.mapboxgl-popup-content');
+    if (content) content.style.marginTop = '0px';
+  });
 
-    for (let i = 0; i < popups.length; i++) {
-      const rect1 = popups[i].getBoundingClientRect();
-      let offsetCount = 1;
-      for (let j = i + 1; j < popups.length; j++) {
-        const rect2 = popups[j].getBoundingClientRect();
-        if (!(rect1.right < rect2.left || rect1.left > rect2.right ||
-              rect1.bottom < rect2.top || rect1.top > rect2.bottom)) {
-          // Apply progressive offset based on number of overlaps
-          popups[j].style.transform = `translateY(${(j - i + 1) * offsetStep}px)`;
-          offsetCount++;
+  for (let i = 0; i < popups.length; i++) {
+    const rect1 = popups[i].getBoundingClientRect();
+    for (let j = i + 1; j < popups.length; j++) {
+      const rect2 = popups[j].getBoundingClientRect();
+      if (!(rect1.right < rect2.left || rect1.left > rect2.right ||
+            rect1.bottom < rect2.top || rect1.top > rect2.bottom)) {
+        const content = popups[j].querySelector('.mapboxgl-popup-content');
+        if (content) {
+          content.style.marginTop = `${(j - i + 1) * offsetStep}px`;
         }
       }
     }
   }
+}
 
 map.on('render', () => {
   setTimeout(adjustPopups, 50);
