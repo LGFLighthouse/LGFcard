@@ -2,36 +2,25 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Mapbox GL – Marker Manager</title>
+  <title>Mapbox GL – Enhanced Multi-Marker Map</title>
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.js"></script>
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.css" rel="stylesheet" />
-
-<!-- PopupManager must come after Mapbox GL JS -->
-<script src="https://cdn.jsdelivr.net/npm/mapbox-gl@3.13.0/dist/mapbox-gl.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/mapbox-gl@3.13.0/dist/mapbox-gl.min.css" rel="stylesheet">
-
+  <script src='https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.js'></script>
+  <link href='https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.css' rel='stylesheet' />
   <style>
     body { margin: 0; padding: 0; }
     #map { width: 100%; height: 100vh; }
+
     .custom-marker {
       background-size: cover;
+      background-position: center;
       border-radius: 50%;
     }
-    #toast {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.75);
-      color: white;
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 14px;
-      display: none;
-      z-index: 9999;
+
+    .mapboxgl-popup-content {
+      font-size: 13px;
+      padding: 4px 8px;
     }
+
     @media print {
       .mapboxgl-control-container,
       .print-hide {
@@ -42,37 +31,91 @@
 </head>
 <body>
   <div id="map"></div>
-  <div id="toast">Copied to clipboard</div>
+
+  <!-- ✅ Toast container -->
+  <div id="toast" style="
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.75);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    display: none;
+    z-index: 9999;
+  ">Copied to clipboard</div>
 
   <script>
     mapboxgl.accessToken = 'pk.eyJ1IjoidnhsZ2ZjIiwiYSI6ImNsd3lueXhidzFld2IybnF6Y2J3b3ptbzgifQ.eGHB2Tuu-dJPHF93HzLMdA';
 
-    const markers = (() => {
+    function getMarkersFromURL() {
       try {
         const params = new URLSearchParams(window.location.search);
         const raw = params.get('markers');
-        return raw ? JSON.parse(decodeURIComponent(raw)) : [];
+        if (!raw) return [];
+        return JSON.parse(decodeURIComponent(raw));
       } catch (e) {
-        console.error("Invalid marker JSON", e);
+        console.error("Invalid marker JSON:", e);
         return [];
       }
-    })();
+    }
 
-    const defaultCenter = markers.length > 0
-      ? [markers[0].lon, markers[0].lat]
-      : [7.438909, 46.943856];
+    window.copyToClipboard = function (text) {
+      navigator.clipboard.writeText(text).then(() => {
+        const toast = document.getElementById('toast');
+        toast.style.display = 'block';
+        setTimeout(() => {
+          toast.style.display = 'none';
+        }, 1500);
+      }).catch(() => {
+        console.warn('Clipboard copy failed');
+      });
+    };
+
+    const markers = getMarkersFromURL();
+    const defaultCenter = [7.438909, 46.943856];
 
     const map = new mapboxgl.Map({
       container: 'map',
       style: 'mapbox://styles/vxlgfc/cmcaly08900o401sh6xr5abc8',
       center: defaultCenter,
-      zoom: 16.8,
-      pitch: 32.5,
-      bearing: -46.4,
+      zoom: 16.82,
+      pitch: 32.50,
+      bearing: -46.40,
       antialias: true
     });
 
-    const popupManager = new MapboxGLPopupManager(map);
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+    const toggleControl = {
+      onAdd: function (map) {
+        const container = document.createElement('div');
+        container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group print-hide';
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.innerHTML = '🗺';
+        button.title = 'Toggle Style';
+        button.style.fontSize = '16px';
+        button.onclick = () => {
+          const spriteURL = map.getStyle().sprite || '';
+          const usingStyleA = spriteURL.includes('cmcaly08900o401sh6xr5abc8');
+
+          const nextStyle = usingStyleA
+            ? 'mapbox://styles/vxlgfc/cmcb14up800vd01sh9nasfukj'
+            : 'mapbox://styles/vxlgfc/cmcaly08900o401sh6xr5abc8';
+
+          map.setStyle(nextStyle);
+        };
+
+        container.appendChild(button);
+        return container;
+      },
+      onRemove: function () {}
+    };
+    map.addControl(toggleControl, 'top-left');
 
     const bounds = new mapboxgl.LngLatBounds();
 
@@ -82,66 +125,95 @@
       const width = marker.iconWidth || 32;
       const height = marker.iconHeight || 32;
       const label = marker.label || `(${marker.lat.toFixed(4)}, ${marker.lon.toFixed(4)})`;
-      const iconURL = marker.icon || 'https://cdn-icons-png.flaticon.com/512/149/149060.png';
 
-      let markerEl;
+      let m;
+
       if (marker.icon) {
-        markerEl = document.createElement('img');
-        markerEl.src = iconURL;
-        markerEl.width = width;
-        markerEl.height = height;
-        markerEl.className = 'custom-marker';
-        markerEl.style.objectFit = 'cover';
+        const el = document.createElement('img');
+        el.src = marker.icon;
+        el.width = width;
+        el.height = height;
+        el.className = 'custom-marker';
+        el.style.borderRadius = '50%';
+        el.style.objectFit = 'cover';
+        m = new mapboxgl.Marker(el);
+      } else {
+        m = new mapboxgl.Marker(); // Default blue pin
       }
-
-      const m = markerEl
-        ? new mapboxgl.Marker(markerEl)
-        : new mapboxgl.Marker();
 
       m.setLngLat([marker.lon, marker.lat]).addTo(map);
 
       const popup = new mapboxgl.Popup({
-        offset: 25,
+        offset: [0, -height * 0.6],
         closeButton: false,
-        closeOnClick: false,
-        anchor: 'auto'
+        closeOnClick: false
       }).setText(label);
 
       m.setPopup(popup);
-      popupManager.addPopup(popup);
+      popup.addTo(map);
+
       bounds.extend([marker.lon, marker.lat]);
     });
 
     if (markers.length > 1) {
-      map.fitBounds(bounds, { padding: 40, maxZoom: 18 });
+      map.fitBounds(bounds, {
+        padding: 40,
+        maxZoom: 18
+      });
+
       map.once('moveend', () => {
         map.easeTo({
-          zoom: 16.8,
-          pitch: 32.5,
-          bearing: -46.4,
+          zoom: 16.83,
+          pitch: 32.50,
+          bearing: -46.40,
           duration: 1000
         });
       });
     }
 
-    // Copy-on-right-click
     map.on('contextmenu', (e) => {
-      const coordText = `${e.lngLat.lat.toFixed(6)}, ${e.lngLat.lng.toFixed(6)}`;
-      const popup = new mapboxgl.Popup({ offset: 10, closeOnClick: true })
+      const lat = e.lngLat.lat.toFixed(6);
+      const lon = e.lngLat.lng.toFixed(6);
+      const coordText = `${lat}, ${lon}`;
+
+      const popup = new mapboxgl.Popup({
+        closeOnClick: true,
+        offset: 10
+      })
         .setLngLat(e.lngLat)
-        .setHTML(`<strong>Coordinates:</strong><br><code style="cursor:pointer;" onclick="copyToClipboard('${coordText}')">${coordText}</code>`);
-      popupManager.addPopup(popup);
+        .setHTML(`
+          <strong>Coordinates:</strong><br>
+          <code style="cursor: pointer; user-select: all;" onclick="copyToClipboard('${coordText}')">${coordText}</code>
+        `)
+        .addTo(map);
     });
-
-    window.copyToClipboard = (text) => {
-      navigator.clipboard.writeText(text).then(() => {
-        const toast = document.getElementById('toast');
-        toast.style.display = 'block';
-        setTimeout(() => toast.style.display = 'none', 1500);
-      });
-    };
-
-    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
   </script>
+
+<script>
+  function adjustPopups() {
+    const popups = Array.from(document.querySelectorAll('.mapboxgl-popup'));
+    const offsetStep = 25;
+
+    // Reset any previous transform
+    popups.forEach(p => p.style.transform = 'translateY(0)');
+
+    for (let i = 0; i < popups.length; i++) {
+      const rect1 = popups[i].getBoundingClientRect();
+      let offsetCount = 1;
+      for (let j = i + 1; j < popups.length; j++) {
+        const rect2 = popups[j].getBoundingClientRect();
+        if (!(rect1.right < rect2.left || rect1.left > rect2.right ||
+              rect1.bottom < rect2.top || rect1.top > rect2.bottom)) {
+          // Apply progressive offset based on number of overlaps
+          popups[j].style.transform = `translateY(${offsetCount * offsetStep}px)`;
+          offsetCount++;
+        }
+      }
+    }
+  }
+
+  map.on('render', adjustPopups);
+</script>
+
 </body>
 </html>
