@@ -2,228 +2,150 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Mapbox GL – Enhanced Multi-Marker Map</title>
+  <title>Mapbox GL – Marker Clustering</title>
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <script src='https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.js'></script>
-  <link href='https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.css' rel='stylesheet' />
+
+  <script src="https://cdn.jsdelivr.net/npm/mapbox-gl@3.13.0/dist/mapbox-gl.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/mapbox-gl@3.13.0/dist/mapbox-gl.min.css" rel="stylesheet" />
+
   <style>
     body { margin: 0; padding: 0; }
     #map { width: 100%; height: 100vh; }
-
     .custom-marker {
-      background-size: cover;
-      background-position: center;
       border-radius: 50%;
+      object-fit: cover;
     }
-
-    .mapboxgl-popup-content {
-      font-size: 13px;
-      padding: 4px 8px;
-    }
-
-    @media print {
-      .mapboxgl-control-container,
-      .print-hide {
-        display: none !important;
-      }
+    #toast {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.75);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 14px;
+      display: none;
+      z-index: 9999;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
-
-  <!-- ✅ Toast container -->
-  <div id="toast" style="
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,0.75);
-    color: white;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 14px;
-    display: none;
-    z-index: 9999;
-  ">Copied to clipboard</div>
+  <div id="toast">Copied to clipboard</div>
 
   <script>
     mapboxgl.accessToken = 'pk.eyJ1IjoidnhsZ2ZjIiwiYSI6ImNsd3lueXhidzFld2IybnF6Y2J3b3ptbzgifQ.eGHB2Tuu-dJPHF93HzLMdA';
 
-    function getMarkersFromURL() {
-      try {
-        const params = new URLSearchParams(window.location.search);
-        const raw = params.get('markers');
-        if (!raw) return [];
-        return JSON.parse(decodeURIComponent(raw));
-      } catch (e) {
-        console.error("Invalid marker JSON:", e);
-        return [];
-      }
-    }
-
-    window.copyToClipboard = function (text) {
-      navigator.clipboard.writeText(text).then(() => {
-        const toast = document.getElementById('toast');
-        toast.style.display = 'block';
-        setTimeout(() => {
-          toast.style.display = 'none';
-        }, 1500);
-      }).catch(() => {
-        console.warn('Clipboard copy failed');
-      });
-    };
-
-    const markers = getMarkersFromURL();
-    const defaultCenter = [7.438909, 46.943856];
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("markers");
+    const markerData = raw ? JSON.parse(decodeURIComponent(raw)) : [];
 
     const map = new mapboxgl.Map({
       container: 'map',
       style: 'mapbox://styles/vxlgfc/cmcaly08900o401sh6xr5abc8',
-      center: defaultCenter,
-      zoom: 16.82,
-      pitch: 32.50,
-      bearing: -46.40,
+      center: [7.438909, 46.943856],
+      zoom: 16.5,
+      pitch: 32,
+      bearing: -46,
       antialias: true
     });
 
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-    const toggleControl = {
-      onAdd: function (map) {
-        const container = document.createElement('div');
-        container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group print-hide';
-
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.innerHTML = '🗺';
-        button.title = 'Toggle Style';
-        button.style.fontSize = '16px';
-        button.onclick = () => {
-          const spriteURL = map.getStyle().sprite || '';
-          const usingStyleA = spriteURL.includes('cmcaly08900o401sh6xr5abc8');
-
-          const nextStyle = usingStyleA
-            ? 'mapbox://styles/vxlgfc/cmcb14up800vd01sh9nasfukj'
-            : 'mapbox://styles/vxlgfc/cmcaly08900o401sh6xr5abc8';
-
-          map.setStyle(nextStyle);
-        };
-
-        container.appendChild(button);
-        return container;
-      },
-      onRemove: function () {}
-    };
-    map.addControl(toggleControl, 'top-left');
-
     const bounds = new mapboxgl.LngLatBounds();
+    const geojson = {
+      type: "FeatureCollection",
+      features: markerData.map((m, idx) => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [m.lon, m.lat] },
+        properties: {
+          id: idx,
+          label: m.label || `(${m.lat}, ${m.lon})`,
+          icon: m.icon || '',
+          iconWidth: m.iconWidth || 32,
+          iconHeight: m.iconHeight || 32
+        }
+      }))
+    };
 
-    markers.forEach(marker => {
-      if (!marker.lat || !marker.lon) return;
-
-      const width = marker.iconWidth || 32;
-      const height = marker.iconHeight || 32;
-      const label = marker.label || `(${marker.lat.toFixed(4)}, ${marker.lon.toFixed(4)})`;
-
-      let m;
-
-      if (marker.icon) {
-        const el = document.createElement('img');
-        el.src = marker.icon;
-        el.width = width;
-        el.height = height;
-        el.className = 'custom-marker';
-        el.style.borderRadius = '50%';
-        el.style.objectFit = 'cover';
-        m = new mapboxgl.Marker(el);
-      } else {
-        m = new mapboxgl.Marker(); // Default blue pin
-      }
-
-      m.setLngLat([marker.lon, marker.lat]).addTo(map);
-
-      const popup = new mapboxgl.Popup({
-        offset: [0, -height * 0.6],
-        closeButton: false,
-        closeOnClick: false
-      }).setText(label);
-
-      m.setPopup(popup);
-      popup.addTo(map);
-
-      bounds.extend([marker.lon, marker.lat]);
-    });
-
-    if (markers.length > 1) {
-      map.fitBounds(bounds, {
-        padding: 40,
-        maxZoom: 18
+    map.on('load', () => {
+      map.addSource('markers', {
+        type: 'geojson',
+        data: geojson,
+        cluster: true,
+        clusterMaxZoom: 18,
+        clusterRadius: 50
       });
 
-      map.once('moveend', () => {
-        map.easeTo({
-          zoom: 16.83,
-          pitch: 32.50,
-          bearing: -46.40,
-          duration: 1000
+      map.addLayer({
+        id: 'clusters',
+        type: 'circle',
+        source: 'markers',
+        filter: ['has', 'point_count'],
+        paint: {
+          'circle-color': '#51bbd6',
+          'circle-radius': ['step', ['get', 'point_count'], 20, 5, 30, 10, 40],
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#fff'
+        }
+      });
+
+      map.addLayer({
+        id: 'cluster-count',
+        type: 'symbol',
+        source: 'markers',
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': ['get', 'point_count_abbreviated'],
+          'text-font': ['Open Sans Bold'],
+          'text-size': 12
+        }
+      });
+
+      map.addLayer({
+        id: 'unclustered-point',
+        type: 'symbol',
+        source: 'markers',
+        filter: ['!', ['has', 'point_count']],
+        layout: {
+          'icon-image': ['concat', 'marker-15'],
+          'icon-size': 1,
+          'text-field': ['get', 'label'],
+          'text-font': ['Open Sans Regular'],
+          'text-offset': [0, 1.2],
+          'text-anchor': 'top'
+        }
+      });
+
+      map.on('click', 'clusters', (e) => {
+        const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+        const clusterId = features[0].properties.cluster_id;
+        map.getSource('markers').getClusterExpansionZoom(clusterId, (err, zoom) => {
+          if (err) return;
+          map.easeTo({
+            center: features[0].geometry.coordinates,
+            zoom: zoom
+          });
         });
       });
-    }
 
-    map.on('contextmenu', (e) => {
-      const lat = e.lngLat.lat.toFixed(6);
-      const lon = e.lngLat.lng.toFixed(6);
-      const coordText = `${lat}, ${lon}`;
+      map.on('click', 'unclustered-point', (e) => {
+        const props = e.features[0].properties;
+        const coords = e.features[0].geometry.coordinates.slice();
+        const popup = new mapboxgl.Popup({
+          offset: [0, -parseInt(props.iconHeight || '32')],
+          anchor: 'bottom',
+          closeButton: false,
+          closeOnClick: false
+        }).setLngLat(coords).setText(props.label).addTo(map);
+      });
 
-      const popup = new mapboxgl.Popup({
-        closeOnClick: true,
-        offset: 10
-      })
-        .setLngLat(e.lngLat)
-        .setHTML(`
-          <strong>Coordinates:</strong><br>
-          <code style="cursor: pointer; user-select: all;" onclick="copyToClipboard('${coordText}')">${coordText}</code>
-        `)
-        .addTo(map);
+      if (markerData.length > 1) {
+        markerData.forEach(m => bounds.extend([m.lon, m.lat]));
+        map.fitBounds(bounds, { padding: 40, maxZoom: 18 });
+      }
     });
   </script>
-
-<script>
-function adjustPopups() {
-  const popups = Array.from(document.querySelectorAll('.mapboxgl-popup-content'));
-  const offsetStep = 25;
-
-  // Reset all margin offsets
-  popups.forEach(p => p.style.marginTop = '0px');
-
-  // Delay check until DOM is stable
-  requestAnimationFrame(() => {
-    for (let i = 0; i < popups.length; i++) {
-      const rect1 = popups[i].getBoundingClientRect();
-      let overlapCount = 0;
-
-      for (let j = i + 1; j < popups.length; j++) {
-        const rect2 = popups[j].getBoundingClientRect();
-
-        const overlap =
-          !(rect1.right < rect2.left || rect1.left > rect2.right ||
-            rect1.bottom < rect2.top || rect1.top > rect2.bottom);
-
-        if (overlap) {
-          overlapCount++;
-          const shift = overlapCount * offsetStep;
-          popups[j].style.marginTop = `${shift}px`;
-        }
-      }
-    }
-  });
-}
-
-map.on('render', () => {
-  setTimeout(adjustPopups, 50);
-});
-</script>
-
 </body>
 </html>
