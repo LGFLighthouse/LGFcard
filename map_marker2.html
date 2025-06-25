@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Mapbox GL – Marker Clustering</title>
+  <title>Mapbox GL – Grouped Popup Markers</title>
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
 
   <script src="https://cdn.jsdelivr.net/npm/mapbox-gl@3.13.0/dist/mapbox-gl.min.js"></script>
@@ -14,6 +14,13 @@
     .custom-marker {
       border-radius: 50%;
       object-fit: cover;
+    }
+    .popup-table {
+      font-size: 12px;
+      border-collapse: collapse;
+    }
+    .popup-table td {
+      padding: 2px 4px;
     }
     #toast {
       position: absolute;
@@ -54,142 +61,69 @@
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
     const bounds = new mapboxgl.LngLatBounds();
-    const geojson = {
-      type: "FeatureCollection",
-      features: markerData.map((m, idx) => ({
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [m.lon, m.lat] },
-        properties: {
-          id: idx,
-          label: m.label || `(${m.lat}, ${m.lon})`,
-          icon: m.icon || '',
-          iconWidth: m.iconWidth || 32,
-          iconHeight: m.iconHeight || 32
-        }
-      }))
-    };
+    const markersGrouped = [];
 
-    map.on('load', () => {
+    markerData.forEach(m => {
+      const iconURL = m.icon || 'https://cdn-icons-png.flaticon.com/512/149/149060.png';
+      const width = m.iconWidth || 32;
+      const height = m.iconHeight || 32;
 
-      // Style toggle control
-      const toggleControl = {
-        onAdd: function (map) {
-          const container = document.createElement('div');
-          container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group print-hide';
-          const button = document.createElement('button');
-          button.innerHTML = '🗺';
-          button.title = 'Toggle Style';
-          button.onclick = () => {
-            const style = map.getStyle().sprite || '';
-            const usingStyleA = style.includes('cmcaly08900o401sh6xr5abc8');
-            map.setStyle(usingStyleA
-              ? 'mapbox://styles/vxlgfc/cmcb14up800vd01sh9nasfukj'
-              : 'mapbox://styles/vxlgfc/cmcaly08900o401sh6xr5abc8');
-          };
-          container.appendChild(button);
-          return container;
-        },
-        onRemove: function () {}
-      };
-      map.addControl(toggleControl, 'top-left');
+      const el = document.createElement('img');
+      el.src = iconURL;
+      el.width = width;
+      el.height = height;
+      el.className = 'custom-marker';
 
+      const marker = new mapboxgl.Marker(el).setLngLat([m.lon, m.lat]);
+      markersGrouped.push({ marker, lat: m.lat, lon: m.lon, label: m.label });
 
-      // Right-click to copy coordinates
-      map.on('contextmenu', (e) => {
-        const lat = e.lngLat.lat.toFixed(6);
-        const lon = e.lngLat.lng.toFixed(6);
-        const coordText = `${lat}, ${lon}`;
-        new mapboxgl.Popup({ closeOnClick: true, offset: 10 })
-          .setLngLat(e.lngLat)
-          .setHTML(`<strong>Coordinates:</strong><br><code style='cursor:pointer' onclick='copyToClipboard("${coordText}")'>${coordText}</code>`)
-          .addTo(map);
-      });
-
-      window.copyToClipboard = function (text) {
-        navigator.clipboard.writeText(text).then(() => {
-          const toast = document.getElementById('toast');
-          toast.style.display = 'block';
-          setTimeout(() => toast.style.display = 'none', 1500);
-        });
-      };
-
-
-      map.addSource('markers', {
-        type: 'geojson',
-        data: geojson,
-        cluster: true,
-        clusterMaxZoom: 18,
-        clusterRadius: 50
-      });
-
-      map.addLayer({
-        id: 'clusters',
-        type: 'circle',
-        source: 'markers',
-        filter: ['has', 'point_count'],
-        paint: {
-          'circle-color': '#51bbd6',
-          'circle-radius': ['step', ['get', 'point_count'], 20, 5, 30, 10, 40],
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#fff'
-        }
-      });
-
-      map.addLayer({
-        id: 'cluster-count',
-        type: 'symbol',
-        source: 'markers',
-        filter: ['has', 'point_count'],
-        layout: {
-          'text-field': ['get', 'point_count_abbreviated'],
-          'text-font': ['Open Sans Bold'],
-          'text-size': 12
-        }
-      });
-
-      map.addLayer({
-        id: 'unclustered-point',
-        type: 'symbol',
-        source: 'markers',
-        filter: ['!', ['has', 'point_count']],
-        layout: {
-          'icon-image': ['concat', 'marker-15'],
-          'icon-size': 1,
-          'text-field': ['get', 'label'],
-          'text-font': ['Open Sans Regular'],
-          'text-offset': [0, 1.2],
-          'text-anchor': 'top'
-        }
-      });
-
-      map.on('click', 'clusters', (e) => {
-        const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
-        const clusterId = features[0].properties.cluster_id;
-        map.getSource('markers').getClusterExpansionZoom(clusterId, (err, zoom) => {
-          if (err) return;
-          map.easeTo({
-            center: features[0].geometry.coordinates,
-            zoom: zoom
-          });
-        });
-      });
-
-      map.on('click', 'unclustered-point', (e) => {
-        const props = e.features[0].properties;
-        const coords = e.features[0].geometry.coordinates.slice();
-        const popup = new mapboxgl.Popup({
-          offset: [0, -parseInt(props.iconHeight || '32')],
-          anchor: 'bottom',
-          closeButton: false,
-          closeOnClick: false
-        }).setLngLat(coords).setText(props.label).addTo(map);
-      });
-
-      if (markerData.length > 1) {
-        markerData.forEach(m => bounds.extend([m.lon, m.lat]));
-        map.fitBounds(bounds, { padding: 40, maxZoom: 18 });
-      }
+      bounds.extend([m.lon, m.lat]);
     });
+
+    // Group markers by location
+    const groupByLocation = {};
+    markersGrouped.forEach(m => {
+      const key = `${m.lat.toFixed(6)},${m.lon.toFixed(6)}`;
+      if (!groupByLocation[key]) groupByLocation[key] = [];
+      groupByLocation[key].push(m.label);
+    });
+
+    Object.entries(groupByLocation).forEach(([coord, labels]) => {
+      const [lat, lon] = coord.split(',').map(Number);
+      const html = '<table class="popup-table">' +
+        labels.map(l => `<tr><td>•</td><td>${l}</td></tr>`).join('') +
+        '</table>';
+
+      new mapboxgl.Popup({
+        offset: [0, -20],
+        anchor: 'bottom',
+        closeButton: false,
+        closeOnClick: false
+      }).setLngLat([lon, lat]).setHTML(html).addTo(map);
+    });
+
+    if (markerData.length > 1) {
+      map.fitBounds(bounds, { padding: 40, maxZoom: 18 });
+    }
+
+    // Right-click coordinate copy
+    map.on('contextmenu', (e) => {
+      const lat = e.lngLat.lat.toFixed(6);
+      const lon = e.lngLat.lng.toFixed(6);
+      const coordText = `${lat}, ${lon}`;
+      new mapboxgl.Popup({ closeOnClick: true, offset: 10 })
+        .setLngLat(e.lngLat)
+        .setHTML(`<strong>Coordinates:</strong><br><code style='cursor:pointer' onclick='copyToClipboard("${coordText}")'>${coordText}</code>`)
+        .addTo(map);
+    });
+
+    window.copyToClipboard = function (text) {
+      navigator.clipboard.writeText(text).then(() => {
+        const toast = document.getElementById('toast');
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 1500);
+      });
+    };
   </script>
 </body>
 </html>
