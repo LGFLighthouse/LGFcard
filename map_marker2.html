@@ -191,16 +191,14 @@
 
 <script>
 function adjustPopups() {
-  const popups = Array.from(document.querySelectorAll('.mapboxgl-popup'));
+  const popups = Array.from(document.querySelectorAll('.mapboxgl-popup-content'));
   const offsetStep = 25;
 
-  // Clear previous offsets
-  popups.forEach(p => p.style.transform = '');
+  // Reset all content
+  popups.forEach(p => p.style.marginTop = '0px');
 
   for (let i = 0; i < popups.length; i++) {
     const rect1 = popups[i].getBoundingClientRect();
-    let overlapCount = 0;
-
     for (let j = i + 1; j < popups.length; j++) {
       const rect2 = popups[j].getBoundingClientRect();
       const overlap =
@@ -208,9 +206,7 @@ function adjustPopups() {
           rect1.bottom < rect2.top || rect1.top > rect2.bottom);
 
       if (overlap) {
-        overlapCount++;
-        const offset = overlapCount * offsetStep;
-        popups[j].style.transform = `translateY(${offset}px)`;
+        popups[j].style.marginTop = `${(j - i + 1) * offsetStep}px`;
       }
     }
   }
