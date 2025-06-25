@@ -80,13 +80,16 @@ const toggleControl = {
         ? 'mapbox://styles/vxlgfc/cmcb14up800vd01sh9nasfukj'  // switch to alternate
         : 'mapbox://styles/vxlgfc/cmcaly08900o401sh6xr5abc8'; // switch back
 
-    map.setStyle(nextStyle);
-  };
+      map.setStyle(nextStyle);
+    };
 
     container.appendChild(button);
     return container;
   },
-  onRemove: function () {}
+
+  onRemove: function () {
+    // Optional cleanup logic if needed
+  }
 };
     map.addControl(toggleControl, 'top-left');
 
@@ -101,7 +104,7 @@ const toggleControl = {
       const label = marker.label || `(${marker.lat.toFixed(4)}, ${marker.lon.toFixed(4)})`;
 
 const el = document.createElement('img');
-el.src = marker.icon;
+el.src = iconURL;
 el.width = marker.iconWidth || 32;
 el.height = marker.iconHeight || 32;
 el.className = 'custom-marker';
