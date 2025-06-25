@@ -58,7 +58,36 @@
       bearing: -46.40,  // slight rotation for aesthetic angle
       antialias: true  // improves 3D rendering quality (optional but recommended)
     });
+<!-- Toast container -->
+<div id="toast" style="
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.75);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  display: none;
+  z-index: 9999;
+">
+  Copied to clipboard
+</div>
 
+<script>
+  window.copyToClipboard = function(text) {
+    navigator.clipboard.writeText(text).then(() => {
+      const toast = document.getElementById('toast');
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 1500);
+    }).catch(() => {
+      console.warn('Clipboard copy failed');
+    });
+  };
+</script>
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
     // Add satellite/street toggle
