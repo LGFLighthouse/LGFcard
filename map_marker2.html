@@ -212,15 +212,7 @@
     }
   }
 
- map.on('render', () => {
-  setTimeout(adjustPopups, 50); // wait ~1 frame
-});
-  
-  map.on('moveend', () => {
-  setTimeout(adjustPopups, 50);
-});
-
-map.on('zoomend', () => {
+map.on('render', () => {
   setTimeout(adjustPopups, 50);
 });
 </script>
