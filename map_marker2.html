@@ -2,128 +2,191 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Mapbox GL – Grouped Popup Markers</title>
+  <title>Mapbox GL – Enhanced Multi-Marker Map</title>
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-
-  <script src="https://cdn.jsdelivr.net/npm/mapbox-gl@3.13.0/dist/mapbox-gl.min.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/mapbox-gl@3.13.0/dist/mapbox-gl.min.css" rel="stylesheet" />
-
+  <script src='https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.js'></script>
+  <link href='https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.css' rel='stylesheet' />
   <style>
     body { margin: 0; padding: 0; }
     #map { width: 100%; height: 100vh; }
+
     .custom-marker {
+      background-size: cover;
+      background-position: center;
       border-radius: 50%;
-      object-fit: cover;
     }
-    .popup-table {
-      font-size: 12px;
-      border-collapse: collapse;
+
+    .mapboxgl-popup-content {
+      font-size: 13px;
+      padding: 4px 8px;
     }
-    .popup-table td {
-      padding: 2px 4px;
-    }
-    #toast {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.75);
-      color: white;
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 14px;
-      display: none;
-      z-index: 9999;
+
+    @media print {
+      .mapboxgl-control-container,
+      .print-hide {
+        display: none !important;
+      }
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
-  <div id="toast">Copied to clipboard</div>
+
+  <!-- ✅ Toast container -->
+  <div id="toast" style="
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.75);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    display: none;
+    z-index: 9999;
+  ">Copied to clipboard</div>
 
   <script>
     mapboxgl.accessToken = 'pk.eyJ1IjoidnhsZ2ZjIiwiYSI6ImNsd3lueXhidzFld2IybnF6Y2J3b3ptbzgifQ.eGHB2Tuu-dJPHF93HzLMdA';
 
-    const params = new URLSearchParams(window.location.search);
-    const raw = params.get("markers");
-    const markerData = raw ? JSON.parse(decodeURIComponent(raw)) : [];
-
-    const map = new mapboxgl.Map({
-      container: 'map',
-      style: 'mapbox://styles/vxlgfc/cmcaly08900o401sh6xr5abc8',
-      center: [7.438909, 46.943856],
-      zoom: 16.5,
-      pitch: 32,
-      bearing: -46,
-      antialias: true
-    });
-
-    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-
-    const bounds = new mapboxgl.LngLatBounds();
-    const markersGrouped = [];
-
-    markerData.forEach(m => {
-      const iconURL = m.icon || 'https://cdn-icons-png.flaticon.com/512/149/149060.png';
-      const width = m.iconWidth || 32;
-      const height = m.iconHeight || 32;
-
-      const el = document.createElement('img');
-      el.src = iconURL;
-      el.width = width;
-      el.height = height;
-      el.className = 'custom-marker';
-
-      const marker = new mapboxgl.Marker(el).setLngLat([m.lon, m.lat]);
-      markersGrouped.push({ marker, lat: m.lat, lon: m.lon, label: m.label });
-
-      bounds.extend([m.lon, m.lat]);
-    });
-
-    // Group markers by location
-    const groupByLocation = {};
-    markersGrouped.forEach(m => {
-      const key = `${m.lat.toFixed(6)},${m.lon.toFixed(6)}`;
-      if (!groupByLocation[key]) groupByLocation[key] = [];
-      groupByLocation[key].push(m.label);
-    });
-
-    Object.entries(groupByLocation).forEach(([coord, labels]) => {
-      const [lat, lon] = coord.split(',').map(Number);
-      const html = '<table class="popup-table">' +
-        labels.map(l => `<tr><td>•</td><td>${l}</td></tr>`).join('') +
-        '</table>';
-
-      new mapboxgl.Popup({
-        offset: [0, -20],
-        anchor: 'bottom',
-        closeButton: false,
-        closeOnClick: false
-      }).setLngLat([lon, lat]).setHTML(html).addTo(map);
-    });
-
-    if (markerData.length > 1) {
-      map.fitBounds(bounds, { padding: 40, maxZoom: 18 });
+    function getMarkersFromURL() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const raw = params.get('markers');
+        if (!raw) return [];
+        return JSON.parse(decodeURIComponent(raw));
+      } catch (e) {
+        console.error("Invalid marker JSON:", e);
+        return [];
+      }
     }
-
-    // Right-click coordinate copy
-    map.on('contextmenu', (e) => {
-      const lat = e.lngLat.lat.toFixed(6);
-      const lon = e.lngLat.lng.toFixed(6);
-      const coordText = `${lat}, ${lon}`;
-      new mapboxgl.Popup({ closeOnClick: true, offset: 10 })
-        .setLngLat(e.lngLat)
-        .setHTML(`<strong>Coordinates:</strong><br><code style='cursor:pointer' onclick='copyToClipboard("${coordText}")'>${coordText}</code>`)
-        .addTo(map);
-    });
 
     window.copyToClipboard = function (text) {
       navigator.clipboard.writeText(text).then(() => {
         const toast = document.getElementById('toast');
         toast.style.display = 'block';
-        setTimeout(() => toast.style.display = 'none', 1500);
+        setTimeout(() => {
+          toast.style.display = 'none';
+        }, 1500);
+      }).catch(() => {
+        console.warn('Clipboard copy failed');
       });
     };
+
+    const markers = getMarkersFromURL();
+    const defaultCenter = [7.438909, 46.943856];
+
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/vxlgfc/cmcaly08900o401sh6xr5abc8',
+      center: defaultCenter,
+      zoom: 16.82,
+      pitch: 32.50,
+      bearing: -46.40,
+      antialias: true
+    });
+
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+    const toggleControl = {
+      onAdd: function (map) {
+        const container = document.createElement('div');
+        container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group print-hide';
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.innerHTML = '🗺';
+        button.title = 'Toggle Style';
+        button.style.fontSize = '16px';
+        button.onclick = () => {
+          const spriteURL = map.getStyle().sprite || '';
+          const usingStyleA = spriteURL.includes('cmcaly08900o401sh6xr5abc8');
+
+          const nextStyle = usingStyleA
+            ? 'mapbox://styles/vxlgfc/cmcb14up800vd01sh9nasfukj'
+            : 'mapbox://styles/vxlgfc/cmcaly08900o401sh6xr5abc8';
+
+          map.setStyle(nextStyle);
+        };
+
+        container.appendChild(button);
+        return container;
+      },
+      onRemove: function () {}
+    };
+    map.addControl(toggleControl, 'top-left');
+
+    const bounds = new mapboxgl.LngLatBounds();
+
+    markers.forEach(marker => {
+      if (!marker.lat || !marker.lon) return;
+
+      const width = marker.iconWidth || 32;
+      const height = marker.iconHeight || 32;
+      const label = marker.label || `(${marker.lat.toFixed(4)}, ${marker.lon.toFixed(4)})`;
+
+      let m;
+
+      if (marker.icon) {
+        const el = document.createElement('img');
+        el.src = marker.icon;
+        el.width = width;
+        el.height = height;
+        el.className = 'custom-marker';
+        el.style.borderRadius = '50%';
+        el.style.objectFit = 'cover';
+        m = new mapboxgl.Marker(el);
+      } else {
+        m = new mapboxgl.Marker(); // Default blue pin
+      }
+
+      m.setLngLat([marker.lon, marker.lat]).addTo(map);
+
+      const popup = new mapboxgl.Popup({
+        offset: [0, -height * 0.6],
+        closeButton: false,
+        closeOnClick: false
+      }).setText(label);
+
+      m.setPopup(popup);
+      popup.addTo(map);
+
+      bounds.extend([marker.lon, marker.lat]);
+    });
+
+    if (markers.length > 1) {
+      map.fitBounds(bounds, {
+        padding: 40,
+        maxZoom: 18
+      });
+
+      map.once('moveend', () => {
+        map.easeTo({
+          zoom: 16.83,
+          pitch: 32.50,
+          bearing: -46.40,
+          duration: 1000
+        });
+      });
+    }
+
+    map.on('contextmenu', (e) => {
+      const lat = e.lngLat.lat.toFixed(6);
+      const lon = e.lngLat.lng.toFixed(6);
+      const coordText = `${lat}, ${lon}`;
+
+      const popup = new mapboxgl.Popup({
+        closeOnClick: true,
+        offset: 10
+      })
+        .setLngLat(e.lngLat)
+        .setHTML(`
+          <strong>Coordinates:</strong><br>
+          <code style="cursor: pointer; user-select: all;" onclick="copyToClipboard('${coordText}')">${coordText}</code>
+        `)
+        .addTo(map);
+    });
   </script>
 </body>
 </html>
